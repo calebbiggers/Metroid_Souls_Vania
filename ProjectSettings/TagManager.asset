@@ -12,9 +12,9 @@ TagManager:
   - Water
   - UI
   - 
-  - 
-  - 
-  - 
+  - Player
+  - Ground
+  - Pickup
   - 
   - 
   - 
@@ -40,4 +40,31 @@ TagManager:
   m_SortingLayers:
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: Background_Far
+    uniqueID: 4285794959
+    locked: 0
+  - name: Background_Close
+    uniqueID: 2728531895
+    locked: 0
+  - name: Ground
+    uniqueID: 999261511
+    locked: 0
+  - name: Props
+    uniqueID: 3807815207
+    locked: 0
+  - name: Player_Background
+    uniqueID: 2114084971
+    locked: 0
+  - name: Player
+    uniqueID: 1264289699
+    locked: 0
+  - name: Player_Equip
+    uniqueID: 1147393563
+    locked: 0
+  - name: Foreground_Close
+    uniqueID: 3276540501
+    locked: 0
+  - name: Forground_Far
+    uniqueID: 3122598271
     locked: 0
