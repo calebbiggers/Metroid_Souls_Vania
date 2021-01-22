@@ -22,14 +22,6 @@
                     "interactions": ""
                 },
                 {
-                    "name": "Attack",
-                    "type": "Button",
-                    "id": "12156495-c2db-4695-9fa2-8559feef998a",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": ""
-                },
-                {
                     "name": "Evade",
                     "type": "Button",
                     "id": "624dbd99-90d5-409c-b1a1-27f654c0264d",
@@ -38,9 +30,25 @@
                     "interactions": ""
                 },
                 {
+                    "name": "Attack",
+                    "type": "Button",
+                    "id": "12156495-c2db-4695-9fa2-8559feef998a",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": ""
+                },
+                {
                     "name": "Special",
                     "type": "Button",
                     "id": "f1547518-db54-4f5b-bbb6-8aeaadc0b756",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": ""
+                },
+                {
+                    "name": "Interact",
+                    "type": "Button",
+                    "id": "9327f7cf-3c50-436d-8fcf-73e8314044c0",
                     "expectedControlType": "Button",
                     "processors": "",
                     "interactions": ""
@@ -181,6 +189,50 @@
                 },
                 {
                     "name": "",
+                    "id": "b155b17c-32f6-4e33-b958-a8a718684167",
+                    "path": "<Mouse>/rightButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Special",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "66403617-379c-4a38-bac2-ff6db5c2be0e",
+                    "path": "<Gamepad>/buttonNorth",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Special",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "a6701914-3c4d-4886-a636-9d7a9bd78390",
+                    "path": "<Keyboard>/f",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "Interact",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "f4b31292-cbe9-4194-b0cd-aa52400c21b5",
+                    "path": "<Gamepad>/rightShoulder",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Interact",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
                     "id": "ae5c0d12-0bc3-4592-9432-c92507c9e7e8",
                     "path": "<Keyboard>/space",
                     "interactions": "",
@@ -220,28 +272,6 @@
                     "processors": "",
                     "groups": "",
                     "action": "Evade",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "b155b17c-32f6-4e33-b958-a8a718684167",
-                    "path": "<Mouse>/rightButton",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Special",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "66403617-379c-4a38-bac2-ff6db5c2be0e",
-                    "path": "<Gamepad>/buttonNorth",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Special",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

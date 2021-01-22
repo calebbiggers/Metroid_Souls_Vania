@@ -14,7 +14,7 @@ public class PlayerController2D : MonoBehaviour
     [SerializeField] public bool has_better_jump = true;                        // Bool used to tell if character  has better jump
     [SerializeField] public float fall_multiplier = 2.5f;                       // Amount to change gravity by when falling. Makes jumping/falling feel better
     [SerializeField] public float gravity_modifier = 1.1f;                      // Amount to change gravity for character
-    [SerializeField] private float coyote_time_limit = .075f;                    // Time allowed since last grounding to jump
+    [SerializeField] private float coyote_time_limit = .075f;                   // Time allowed since last grounding to jump
 
     [Space]
     [Header("Movement Debug")]
@@ -27,14 +27,22 @@ public class PlayerController2D : MonoBehaviour
     [SerializeField] private Color debug_gizmo_color = Color.red;   // Color used for drawing gizmos
     [SerializeField] private bool is_grounded = true;               // Bool used to tell if player is grounded
     [SerializeField] private Transform ground_check;                // Transform to check for ground at
-    [SerializeField] private LayerMask what_is_ground;              // Layer mask for checking ground
+    [SerializeField] private LayerMask ground_mask;                 // Layer mask for checking ground
     [SerializeField] private float ground_check_distance = .25f;    // Distance from feet to check if grounded
     [SerializeField] private bool jump = false;                     // Bool used to store if player has pressed jump
     [SerializeField] private float last_grounded_time = 0;          // Time last the player was grounded
 
+    [Space]
+    [Header("Interactions")]
+    [SerializeField] private Interactable focus;                    // Interactable player is currently focused on
+    [SerializeField] private float interact_radius = 1f;            // Radius from player that player can interact with objects
+    [SerializeField] private LayerMask interactables_mask;          // Layers mask of all interactable objects
+
+
+
     private CharacterController2D controller;   // Character controller 2d for moving the character
-    private Rigidbody2D rb2d;                   // Rigid body. Used for the animator
-    private Animator animator;                  // Animator
+    private Rigidbody2D rb2d;                   // Rigid body. Used to get stats for the animator
+    private Animator animator;                  // Player Animator
 
     private Vector2 ground_check_collider_size; // Size of collider to check if grounded or not
 
@@ -62,8 +70,8 @@ public class PlayerController2D : MonoBehaviour
         ground_check_collider_size.x = box_collider.size.x * box_collider.transform.localScale.x;
         ground_check_collider_size.y = ground_check_distance;
 
-        // Set player to not collide with pickups
-        Physics2D.IgnoreLayerCollision(7, 9);
+        // Set player to not collide with iteractables.
+        //Physics2D.IgnoreLayerCollision(7, 10);
     }
 
     // Update is called once per frame
@@ -85,7 +93,7 @@ public class PlayerController2D : MonoBehaviour
         is_grounded = false;
 
         // Check for ground collision every frame
-        Collider2D[] colliders = Physics2D.OverlapBoxAll(ground_check.position, ground_check_collider_size, 0, what_is_ground);
+        Collider2D[] colliders = Physics2D.OverlapBoxAll(ground_check.position, ground_check_collider_size, 0, ground_mask);
         for (int i = 0; i < colliders.Length; i++)
         {
             // Make sure collision isnt player itself
@@ -141,6 +149,77 @@ public class PlayerController2D : MonoBehaviour
         }
     }
 
+    public void Evade(InputAction.CallbackContext context)
+    {
+        if (context.started)
+        {
+            Functions.DebugLog("Player hit evade");
+        }
+    }
+
+    public void Attack(InputAction.CallbackContext context)
+    {
+        if (context.started)
+        {
+            Functions.DebugLog("Player hit attack");
+        }
+    }
+
+    public void Special(InputAction.CallbackContext context)
+    {
+        if (context.started)
+        {
+            Functions.DebugLog("Player hit special");
+        }
+    }
+
+    // Player interacts action
+    public void Interact(InputAction.CallbackContext context)
+    {
+        // Only do stuff on initial button press
+        if (context.started)
+        {
+            // Check for ground collision every frame
+            Collider2D[] colliders = Physics2D.OverlapCircleAll(transform.position, interact_radius, interactables_mask);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                // Make sure collision isnt player itself
+                if (colliders[i].gameObject != this.gameObject)
+                {
+                    // Found an item to interact with
+                    Functions.DebugLog("Found an interactable item");
+                    Interactable interactable = colliders[i].gameObject.GetComponent<Interactable>();
+                    if(interactable != null)
+                    {
+                        SetFocus(interactable);
+                    }
+                }
+            }
+        }
+    }
+
+    public void SetFocus(Interactable new_focus)
+    {
+        if (new_focus != focus)
+        {
+            if(focus != null)
+            {
+                focus.OnDefocused();
+            }
+            focus = new_focus;
+        }
+        new_focus.OnFocused(transform);
+    }
+
+    public void RemoveFocus()
+    {
+        if(focus != null)
+        {
+            focus.OnDefocused();
+        }
+        focus = null;
+    }
+
     // Debug gizmos for player
     private void OnDrawGizmos()
     {
@@ -148,6 +227,9 @@ public class PlayerController2D : MonoBehaviour
         Gizmos.color = debug_gizmo_color;
 
         // Gizmo for if the player is grounded
-        Gizmos.DrawCube(ground_check.position, ground_check_collider_size);
+        Gizmos.DrawWireCube(ground_check.position, ground_check_collider_size);
+
+        // Gizmo for interaction radius
+        Gizmos.DrawWireSphere(transform.position, interact_radius);
     }
 }

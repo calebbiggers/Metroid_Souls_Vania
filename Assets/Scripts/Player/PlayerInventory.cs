@@ -2,65 +2,88 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class ItemPickup
-{
-
-}
-
 public class InventoryEntry
 {
 
 }
 
-
 public class PlayerInventory : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
-    {
 
+    #region Singleton
+    public static PlayerInventory instance;
+
+    private void Awake()
+    {
+        if(instance != null)
+        {
+            Debug.LogWarning("More than one instance of Player Inventory found");
+            return;
+        }
+        instance = this;
+    }
+    #endregion  
+
+    public delegate void OnItemChanged();
+    public OnItemChanged onItemChangedCallback;
+
+    public List<Item> player_items = new List<Item>();  // Player's inventory
+    public List<Item> stash_items = new List<Item>();   // Player's stash inventory
+
+    public bool PickUpItem(Item item)
+    {
+        if (!item.is_default)
+        {
+            player_items.Add(item);
+
+            if(onItemChangedCallback != null)
+            {
+                onItemChangedCallback.Invoke();
+            }
+
+            return true;
+        }
+        return false;
+        
     }
 
-    // Update is called once per frame
-    void Update()
+    public bool DiscardItem(Item item)
     {
+        if (!item.is_default)
+        {
+            player_items.Remove(item);
 
+            if (onItemChangedCallback != null)
+            {
+                onItemChangedCallback.Invoke();
+            }
+
+            return true;
+        }
+        return false;
     }
 
-    public void StoreItem(ItemPickup item_to_store)
+    public bool StashItem(Item item)
     {
+        stash_items.Add(item);
 
-    }
+        if (onItemChangedCallback != null)
+        {
+            onItemChangedCallback.Invoke();
+        }
 
-    public void TryPickup()
-    {
-
-    }
-
-    public bool AddItemToHotbar(InventoryEntry item_for_hotbar)
-    {
         return true;
     }
 
-    public bool EquipWeapon(InventoryEntry weapon_to_equip)
+    public bool DiscardFromStash(Item item)
     {
+        stash_items.Remove(item);
+
+        if (onItemChangedCallback != null)
+        {
+            onItemChangedCallback.Invoke();
+        }
+
         return true;
-    }
-
-    public bool AddItemToInv(bool finished_adding)
-    {
-        return true;
-    }
-
-    public void UpdateHUD()
-    {
-       
-    }
-
-    public void TriggerItemUse(int item_to_use)
-    {
-
-    }
-
-    
+    } 
 }
