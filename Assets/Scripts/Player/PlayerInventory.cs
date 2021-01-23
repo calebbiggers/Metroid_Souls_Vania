@@ -2,14 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class InventoryEntry
-{
-
-}
-
 public class PlayerInventory : MonoBehaviour
 {
-
     #region Singleton
     public static PlayerInventory instance;
 

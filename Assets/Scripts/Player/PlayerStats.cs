@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class PlayerStats : MonoBehaviour
 {
-    // Start is called before the first frame update
     #region Singleton
     public static PlayerStats instance;
 
@@ -19,22 +18,19 @@ public class PlayerStats : MonoBehaviour
     }
     #endregion  
 
-    public int GetHealth()
-    {
-        return 0;
-    }
+    [Space]
+    [Header("Player Config")]
+    [SerializeField] public static int base_health_max;
+    [SerializeField] public static int base_mana;
+    [SerializeField] public static int base_damage;
 
-    public int GetMana()
-    {
-        return 0;
-    }
+    [Space]
+    [Header("Player Data")]
+    [SerializeField] public static int health;
+    [SerializeField] public static int bmana;
+    [SerializeField] public static int souls;
 
-    public int GetSouls()
-    {
-        return 0;
-    }
-
-    public void ApplyHealth()
+    public void ApplyHealth(int health_to_add)
     {
 
     }

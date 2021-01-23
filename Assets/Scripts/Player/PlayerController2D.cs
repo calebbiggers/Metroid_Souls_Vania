@@ -5,8 +5,22 @@ using UnityEngine.InputSystem;
 
 public class PlayerController2D : MonoBehaviour
 {
+    #region Singleton
+    public static PlayerController2D instance;
+
+    private void Awake()
+    {
+        if (instance != null)
+        {
+            Debug.LogWarning("More than one instance of Player Controller found");
+            return;
+        }
+        instance = this;
+    }
+    #endregion 
+
     [Space]
-    [Header("Player Stats")]
+    [Header("Player Config")]
     [SerializeField] public float move_speed = 10f;                             // Characters move speed
     [Range(0, .3f)] [SerializeField] public float movement_smoothing = .05f;    // Amount to smooth character movement by
     [SerializeField] public float jump_force = 7f;                              // Characters jump force
@@ -15,27 +29,30 @@ public class PlayerController2D : MonoBehaviour
     [SerializeField] public float fall_multiplier = 2.5f;                       // Amount to change gravity by when falling. Makes jumping/falling feel better
     [SerializeField] public float gravity_modifier = 1.1f;                      // Amount to change gravity for character
     [SerializeField] private float coyote_time_limit = .075f;                   // Time allowed since last grounding to jump
+    [SerializeField] private float max_jump_buffer = .05f;                      // Time since last hit jump for player to jump when grounded
 
     [Space]
-    [Header("Movement Debug")]
+    [Header("Movement")]
     [SerializeField] private float input_horizontal = 0f;       // Float for storing the horizontal input
     [SerializeField] private float last_input_average = 0f;     // Float used to store the last input
-    [SerializeField] private bool was_moving_right = true;      // Bool used to tell animator which direction player was last moving
+    [SerializeField] private bool moving_right = true;          // Bool used to tell animator which direction player was last moving
 
     [Space]
-    [Header("Jumping Debug")]
+    [Header("Jumping")]
     [SerializeField] private Color debug_gizmo_color = Color.red;   // Color used for drawing gizmos
     [SerializeField] private bool is_grounded = true;               // Bool used to tell if player is grounded
     [SerializeField] private Transform ground_check;                // Transform to check for ground at
     [SerializeField] private LayerMask ground_mask;                 // Layer mask for checking ground
     [SerializeField] private float ground_check_distance = .25f;    // Distance from feet to check if grounded
     [SerializeField] private bool jump = false;                     // Bool used to store if player has pressed jump
-    [SerializeField] private float last_grounded_time = 0;          // Time last the player was grounded
+    [SerializeField] private float last_grounded_time = 10;         // Time last the player was grounded
+    [SerializeField] private float last_jump_time = -1f;            // Time since the player last hit jump
 
     [Space]
     [Header("Interactions")]
     [SerializeField] private Interactable focus;                    // Interactable player is currently focused on
-    [SerializeField] private float interact_radius = 1f;            // Radius from player that player can interact with objects
+    [SerializeField] private Transform interact_transform;          // Center from which interactions will be checked
+    [SerializeField] private float interact_distance = 1f;          // Distance from player that player can interact with objects
     [SerializeField] private LayerMask interactables_mask;          // Layers mask of all interactable objects
 
 
@@ -43,11 +60,13 @@ public class PlayerController2D : MonoBehaviour
     private CharacterController2D controller;   // Character controller 2d for moving the character
     private Rigidbody2D rb2d;                   // Rigid body. Used to get stats for the animator
     private Animator animator;                  // Player Animator
+    private BoxCollider2D box_collider;         // Players box collider
 
     private Vector2 ground_check_collider_size; // Size of collider to check if grounded or not
+    private Vector2 interact_collider_size;     // Size of box for interactions
 
     // Start is called before the first frame update
-    void Awake()
+    void Start()
     {
         // Get character controller and set values
         controller = GetComponent<CharacterController2D>();
@@ -66,12 +85,15 @@ public class PlayerController2D : MonoBehaviour
         animator = GetComponent<Animator>();
 
         // Set ground check size
-        BoxCollider2D box_collider = GetComponent<BoxCollider2D>();
+        box_collider = GetComponent<BoxCollider2D>();
+
+        // Set initial ground collider size
         ground_check_collider_size.x = box_collider.size.x * box_collider.transform.localScale.x;
         ground_check_collider_size.y = ground_check_distance;
 
-        // Set player to not collide with iteractables.
-        //Physics2D.IgnoreLayerCollision(7, 10);
+        // Set initial interact collider size
+        interact_collider_size.x = interact_distance;
+        interact_collider_size.y = box_collider.size.y;
     }
 
     // Update is called once per frame
@@ -84,13 +106,17 @@ public class PlayerController2D : MonoBehaviour
         animator.SetFloat("vertical_speed", rb2d.velocity.y);
 
         // Set direction
-        animator.SetBool("moving_right", was_moving_right);
+        animator.SetBool("moving_right", moving_right);
 
         // Set is grounded
         animator.SetBool("is_grounded", is_grounded);
 
         //  Check if player is grounded using collider
         is_grounded = false;
+
+        // Get player size for grounded check
+        ground_check_collider_size.x = box_collider.size.x * box_collider.transform.localScale.x;
+        ground_check_collider_size.y = ground_check_distance;
 
         // Check for ground collision every frame
         Collider2D[] colliders = Physics2D.OverlapBoxAll(ground_check.position, ground_check_collider_size, 0, ground_mask);
@@ -103,6 +129,29 @@ public class PlayerController2D : MonoBehaviour
                 is_grounded = true;
                 last_grounded_time = Time.time;
             }
+        }
+
+        // Check if the player hit jump right before touching the ground
+        if(is_grounded & last_jump_time != -1)
+        {
+            if(Time.time - last_jump_time < max_jump_buffer)
+            {   
+                // Set the jump bool to true so movement knows to jump
+                jump = true;
+
+                // Set the jump animation trigger
+                animator.SetTrigger("jump");
+            }
+        }
+
+        // Set the scale to turn player left and right
+        if (moving_right)
+        {
+            transform.localScale = new Vector3(1, 1, 1);
+        }
+        else
+        {
+            transform.localScale = new Vector3(-1, 1, 1);
         }
     }
 
@@ -125,11 +174,11 @@ public class PlayerController2D : MonoBehaviour
         // Read in and store horizontal input
         if (!context.canceled)
         {
-            input_horizontal = context.ReadValue<Vector2>().x;
+            input_horizontal = Mathf.Round(context.ReadValue<Vector2>().x);
         }
 
         // If last input is over 1 set moving right to true
-        was_moving_right = last_input_average > 0 ? true : false;
+        moving_right = last_input_average > 0 ? true : false;
 
         // Set was moving right based on last input
         if(context.canceled)
@@ -142,10 +191,26 @@ public class PlayerController2D : MonoBehaviour
     // Player jumps action
     public void Jump(InputAction.CallbackContext context)
     {
-        // If action was just started and player is grounded, jump
-        if(context.started && (is_grounded || (Time.time - last_grounded_time) < coyote_time_limit))
+        // Only trigger once per button press   
+        if (context.started)
         {
-            jump = true;
+            // If action was just started and player is grounded, jump
+            if (is_grounded || (Time.time - last_grounded_time) < coyote_time_limit)
+            {
+                // Set the last jump time to invalid
+                last_jump_time = -1;
+
+                // Set the jump bool to true so movement knows to jump
+                jump = true;
+
+                // Set the jump animation trigger
+                animator.SetTrigger("jump");
+            }
+            else
+            {
+                // Save the last jump time if player was not grounded
+                last_jump_time = Time.time;
+            }
         }
     }
 
@@ -179,8 +244,12 @@ public class PlayerController2D : MonoBehaviour
         // Only do stuff on initial button press
         if (context.started)
         {
+
+            interact_collider_size.x = interact_distance;
+            interact_collider_size.y = box_collider.size.y;
+
             // Check for ground collision every frame
-            Collider2D[] colliders = Physics2D.OverlapCircleAll(transform.position, interact_radius, interactables_mask);
+            Collider2D[] colliders = Physics2D.OverlapBoxAll(interact_transform.position, interact_collider_size, interactables_mask);
             for (int i = 0; i < colliders.Length; i++)
             {
                 // Make sure collision isnt player itself
@@ -191,7 +260,11 @@ public class PlayerController2D : MonoBehaviour
                     Interactable interactable = colliders[i].gameObject.GetComponent<Interactable>();
                     if(interactable != null)
                     {
+                        // Set the interactable object as the focus
                         SetFocus(interactable);
+
+                        // Set the animator interaction trigger
+                        animator.SetTrigger("interact");
                     }
                 }
             }
@@ -230,6 +303,6 @@ public class PlayerController2D : MonoBehaviour
         Gizmos.DrawWireCube(ground_check.position, ground_check_collider_size);
 
         // Gizmo for interaction radius
-        Gizmos.DrawWireSphere(transform.position, interact_radius);
+        Gizmos.DrawWireCube(interact_transform.position, interact_collider_size);
     }
 }

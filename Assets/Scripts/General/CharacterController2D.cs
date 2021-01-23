@@ -6,7 +6,7 @@ using UnityEngine.Events;
 public class CharacterController2D : MonoBehaviour
 {
     [Space]
-    [Header("Character Stats")]
+    [Header("Character Config")]
     [SerializeField] public float move_speed;                           // Characters move speed
     [Range(0, .3f)] [SerializeField] public float movement_smoothing;   // Amount to smooth character movement by
     [SerializeField] public float jump_force = 7f;                      // Characters jump force
@@ -16,7 +16,7 @@ public class CharacterController2D : MonoBehaviour
     [SerializeField] public float gravity_modifier;                     // Amount to change gravity for character
 
     private Rigidbody2D rb2d;
-    private Vector2 velocity = Vector3.zero;
+    private Vector2 velocity = Vector3.zero;    // Temp var for movement smoothing
 
     // Start is called before the first frame update
     void Awake()
@@ -35,12 +35,14 @@ public class CharacterController2D : MonoBehaviour
 
         // Apply velocity to character
         rb2d.velocity = Vector2.SmoothDamp(rb2d.velocity, target_move_velocity, ref velocity, movement_smoothing);
+        //rb2d.velocity = target_move_velocity;
         //rb2d.AddForce(new Vector2(direction * move_speed, 0f), ForceMode2D.Force);
 
         // Check if jump has been inputed
         if(jump)
         {
             // Apply velocity to character
+            rb2d.velocity *= new Vector2(1f, 0f);
             rb2d.AddForce(Vector2.up * jump_force, ForceMode2D.Impulse);
         }
 
