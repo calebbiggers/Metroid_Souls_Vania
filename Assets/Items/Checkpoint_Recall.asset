@@ -10,11 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 226192f0a998509458abc0bf0a7f019b, type: 3}
-  m_Name: Test Item
+  m_Name: Checkpoint_Recall
   m_EditorClassIdentifier: 
-  name: New Item
+  ID: 6
+  name: Checkpoint Recall Item
+  item_description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In
+    eleifend iaculis urna eu pharetra. Sed eget augue ornare, sagittis mi et, sollicitudin
+    dui. \nUt massa mauris, porttitor sed ipsum in."
   icon: {fileID: 0}
-  item_type: 5
-  value: 0
-  base_value: 0
+  item_type: 7
+  effect_amount: -1
+  base_value: 100
   is_default: 0
+  max_carried: 12
+  max_stashed: 999

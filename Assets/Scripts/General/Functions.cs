@@ -7,13 +7,17 @@ public class Functions
     // Used to print general info to debug log in color
     public static void DebugLog(string in_string)
     {
-        Debug.Log("<color=white>[DEBUG] - " + in_string + "</color>");
+        Debug.Log("<color=white>[DEBUG] -   " + in_string + "</color>");
     }
 
     // Used to print errors to debug log in color
     public static void DebugLogError(string in_string)
     {
-        Debug.Log("<color=red>[Error] - " + in_string + "</color>");
+        Debug.LogError("<color=red>[ERROR]    - " + in_string + "</color>");
+    }
+    public static void DebugLogWarning(string in_string)
+    {
+        Debug.LogWarning("<color=yellow>[WARNING] - " + in_string + "</color>");
     }
 
     // Converts unity units to perfect pixel units

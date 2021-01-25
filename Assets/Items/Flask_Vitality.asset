@@ -12,16 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 226192f0a998509458abc0bf0a7f019b, type: 3}
   m_Name: Flask_Vitality
   m_EditorClassIdentifier: 
-  item_ID: -1
+  ID: 2
   name: Flask of Vitality
   icon: {fileID: -5756300473412917969, guid: 1d1d35804b7bd8f4e87af431e6925535, type: 3}
-  amount_carried: 0
-  item_type: 5
-  effect_amount: -1
+  amount_carried: 1
+  item_type: 0
+  effect_amount: 20
   base_value: -1
-  is_default: 0
+  is_default: 1
   max_carried: 20
-  max_stashed: 999
+  max_stashed: 0
   item_description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In
     eleifend iaculis urna eu pharetra. Sed eget augue ornare, sagittis mi et, sollicitudin
     dui. \nUt massa mauris, porttitor sed ipsum in."
