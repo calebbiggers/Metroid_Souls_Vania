@@ -21,7 +21,7 @@ public class InventorySlot : MonoBehaviour
         // Check if item in slot is an empty slot item
         if(item_entry.item.ID != -1)
         {
-            Debug.Log("Item is not empty item <" + item_entry.item.name + ">");
+            Functions.DebugLog("Item is not empty item <" + item_entry.item.name + ">");
 
             // Set the sprite to the item icon and enable it
             if(item_entry.item.icon == null)
@@ -57,8 +57,13 @@ public class InventorySlot : MonoBehaviour
 
     public void ClearSlot()
     {
+        // Set the item entry to null
         item_entry = null;
+
+        // set the sprite to null
         item_icon.sprite = null;
+        
+        // disable the icon and set the count text to empty
         item_icon.enabled = false;
         item_count.text = "";
     }

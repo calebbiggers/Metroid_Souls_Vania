@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+[RequireComponent (typeof (Controller2D))]
 public class PlayerController2D : MonoBehaviour
 {
     #region Singleton
@@ -30,6 +31,8 @@ public class PlayerController2D : MonoBehaviour
     [SerializeField] public float gravity_modifier = 1.1f;                      // Amount to change gravity for character
     [SerializeField] private float coyote_time_limit = .075f;                   // Time allowed since last grounding to jump
     [SerializeField] private float max_jump_buffer = .05f;                      // Time since last hit jump for player to jump when grounded
+    [SerializeField] public float gravity = -9.81f;
+    [SerializeField] private Vector3 velocity;
 
     [Space]
     [Header("Movement")]
@@ -55,9 +58,11 @@ public class PlayerController2D : MonoBehaviour
     [SerializeField] private float interact_distance = 1f;          // Distance from player that player can interact with objects
     [SerializeField] private LayerMask interactables_mask;          // Layers mask of all interactable objects
 
+    [Space]
+    [Header("Movement Enable")]
+    [SerializeField] public bool control_enabled = true;
 
-
-    private CharacterController2D controller;   // Character controller 2d for moving the character
+    private Controller2D controller;   // Character controller 2d for moving the character
     private Rigidbody2D rb2d;                   // Rigid body. Used to get stats for the animator
     private Animator animator;                  // Player Animator
     private BoxCollider2D box_collider;         // Players box collider
@@ -69,17 +74,10 @@ public class PlayerController2D : MonoBehaviour
     void Start()
     {
         // Get character controller and set values
-        controller = GetComponent<CharacterController2D>();
-        controller.move_speed = move_speed;
-        controller.movement_smoothing = movement_smoothing;
-        controller.jump_force = jump_force;
-        controller.has_air_control = has_air_control;
-        controller.has_better_jump = has_better_jump;
-        controller.fall_multiplier = fall_multiplier;
-        controller.gravity_modifier = gravity_modifier;
+        controller = GetComponent<Controller2D>();
 
         // Get rigid body for animations
-        rb2d = GetComponent<Rigidbody2D>();
+        //rb2d = GetComponent<Rigidbody2D>();
 
         // Get Animator
         animator = GetComponent<Animator>();
@@ -99,11 +97,14 @@ public class PlayerController2D : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // Set horizontal speed for animator
-        animator.SetFloat("horizontal_speed", rb2d.velocity.x);
+        controller.UpdateInputs(input_horizontal, jump);
+        jump = false;
 
         // Set horizontal speed for animator
-        animator.SetFloat("vertical_speed", rb2d.velocity.y);
+        animator.SetFloat("horizontal_speed", velocity.x);
+
+        // Set horizontal speed for animator
+        animator.SetFloat("vertical_speed", velocity.y);
 
         // Set direction
         animator.SetBool("moving_right", moving_right);
@@ -115,7 +116,7 @@ public class PlayerController2D : MonoBehaviour
         is_grounded = false;
 
         // Get player size for grounded check
-        ground_check_collider_size.x = box_collider.size.x * box_collider.transform.localScale.x;
+        ground_check_collider_size.x = box_collider.size.x * box_collider.transform.localScale.x * .98f;
         ground_check_collider_size.y = ground_check_distance;
 
         // Check for ground collision every frame
@@ -155,116 +156,123 @@ public class PlayerController2D : MonoBehaviour
         }
     }
 
-    // Fixed update is frame rate dependant
-    public void FixedUpdate()
-    {
-        // Move the character using Character Controller 2D
-        controller.Move(input_horizontal, jump);
-
-        // Set jump to false so that player only jumps once
-        jump = false;
-    }
-
     // Player move action
     public void Move(InputAction.CallbackContext context)
     {
-        // Store calculate running average (I think thats what its called?) with last input
-        last_input_average = (last_input_average + input_horizontal) / 2;
-
-        // Read in and store horizontal input
-        if (!context.canceled)
+        if (control_enabled)
         {
-            input_horizontal = Mathf.Round(context.ReadValue<Vector2>().x);
-        }
+            // Store calculate running average (I think thats what its called?) with last input
+            last_input_average = (last_input_average + input_horizontal) / 2;
 
-        // If last input is over 1 set moving right to true
-        moving_right = last_input_average > 0 ? true : false;
+            // Read in and store horizontal input
+            if (!context.canceled)
+            {
+                input_horizontal = Mathf.Round(context.ReadValue<Vector2>().x);
+            }
 
-        // Set was moving right based on last input
-        if(context.canceled)
-        {
-            last_input_average = 0f;
-            input_horizontal = 0f;
+            // If last input is over 1 set moving right to true
+            moving_right = last_input_average > 0 ? true : false;
+
+            // Set was moving right based on last input
+            if (context.canceled)
+            {
+                last_input_average = 0f;
+                input_horizontal = 0f;
+            }
         }
     }
 
     // Player jumps action
     public void Jump(InputAction.CallbackContext context)
     {
-        // Only trigger once per button press   
-        if (context.started)
+        if (control_enabled)
         {
-            // If action was just started and player is grounded, jump
-            if (is_grounded || (Time.time - last_grounded_time) < coyote_time_limit)
+            // Only trigger once per button press   
+            if (context.started)
             {
-                // Set the last jump time to invalid
-                last_jump_time = -1;
+                // If action was just started and player is grounded, jump
+                if (is_grounded || (Time.time - last_grounded_time) < coyote_time_limit)
+                {
+                    // Set the last jump time to invalid
+                    last_jump_time = -1;
 
-                // Set the jump bool to true so movement knows to jump
-                jump = true;
+                    // Set the jump bool to true so movement knows to jump
+                    jump = true;
 
-                // Set the jump animation trigger
-                animator.SetTrigger("jump");
-            }
-            else
-            {
-                // Save the last jump time if player was not grounded
-                last_jump_time = Time.time;
+                    // Set the jump animation trigger
+                    animator.SetTrigger("jump");
+                }
+                else
+                {
+                    // Save the last jump time if player was not grounded
+                    last_jump_time = Time.time;
+                }
             }
         }
     }
 
     public void Evade(InputAction.CallbackContext context)
     {
-        if (context.started)
+        if (control_enabled)
         {
-            Functions.DebugLog("Player hit evade");
+            if (context.started)
+            {
+                Functions.DebugLog("Player hit evade");
+            }
         }
     }
 
     public void Attack(InputAction.CallbackContext context)
     {
-        if (context.started)
+        if (control_enabled)
         {
-            Functions.DebugLog("Player hit attack");
+            if (context.started)
+            {
+                Functions.DebugLog("Player hit attack");
+            }
         }
     }
 
     public void Special(InputAction.CallbackContext context)
     {
-        if (context.started)
+        if (control_enabled)
         {
-            Functions.DebugLog("Player hit special");
+            if (context.started)
+            {
+                Functions.DebugLog("Player hit special");
+            }
         }
     }
 
     // Player interacts action
     public void Interact(InputAction.CallbackContext context)
     {
-        // Only do stuff on initial button press
-        if (context.started)
+        if (control_enabled)
         {
-
-            interact_collider_size.x = interact_distance;
-            interact_collider_size.y = box_collider.size.y;
-
-            // Check for ground collision every frame
-            Collider2D[] colliders = Physics2D.OverlapBoxAll(interact_transform.position, interact_collider_size, interactables_mask);
-            for (int i = 0; i < colliders.Length; i++)
+            // Only do stuff on initial button press
+            if (context.started)
             {
-                // Make sure collision isnt player itself
-                if (colliders[i].gameObject != this.gameObject)
-                {
-                    // Found an item to interact with
-                    Functions.DebugLog("Found an interactable item");
-                    Interactable interactable = colliders[i].gameObject.GetComponent<Interactable>();
-                    if(interactable != null)
-                    {
-                        // Set the interactable object as the focus
-                        SetFocus(interactable);
+                interact_collider_size.x = interact_distance;
+                interact_collider_size.y = box_collider.size.y;
 
-                        // Set the animator interaction trigger
-                        animator.SetTrigger("interact");
+                // Check for ground collision every frame
+                Collider2D[] colliders = Physics2D.OverlapBoxAll(interact_transform.position, interact_collider_size, interactables_mask);
+                for (int i = 0; i < colliders.Length; i++)
+                {
+                    // Make sure collision isnt player itself
+                    if (colliders[i].gameObject != this.gameObject)
+                    {
+                        // Found an item to interact with
+                        Functions.DebugLog("Found an interactable item");
+                        Interactable interactable = colliders[i].gameObject.GetComponent<Interactable>();
+                        if (interactable != null)
+                        {
+                            // Set the interactable object as the focus
+                            SetFocus(interactable);
+
+                            // Set the animator interaction trigger
+                            animator.SetTrigger("interact");
+                        }
                     }
                 }
             }

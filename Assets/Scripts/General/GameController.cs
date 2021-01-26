@@ -18,6 +18,7 @@ public class GameController : MonoBehaviour
     }
     #endregion 
 
+    public float gravity = -9.81f;
     public bool game_is_paused = false;
     //AudioSource.ignoreListenerPause=true; <- used to not pause audio source
 

@@ -41,8 +41,6 @@ public class ItemEntry
     }
 }
 
-
-
 public class PlayerInventory : MonoBehaviour
 {
     #region Singleton
