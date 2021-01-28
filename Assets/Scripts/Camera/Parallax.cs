@@ -5,7 +5,7 @@ using UnityEngine;
 public class Parallax : MonoBehaviour
 {
     private static float y_factor = .25f;  // Factor by which to lessen vertical parallax
-    private Camera camera;          // Reference to camera  
+    private Camera _camera;          // Reference to camera  
     private Transform subject;      // Subject to follow. In this case the player   
     private Vector2 start_position; // Vector2 storing the start position of the object 
     private float start_z;          // The start z of the object. Stored seperately to make vector math easier
@@ -17,14 +17,14 @@ public class Parallax : MonoBehaviour
     float distance_from_subject => transform.position.z - subject.position.z;
     
     // Distance from the clipping plane. 
-    float clipping_plane => (camera.transform.position.z + (distance_from_subject > 0 ? camera.farClipPlane : camera.nearClipPlane));
+    float clipping_plane => (_camera.transform.position.z + (distance_from_subject > 0 ? _camera.farClipPlane : _camera.nearClipPlane));
     
     float parallax_factor => Mathf.Abs(distance_from_subject) / clipping_plane;
 
     private void Start()
     {
         // Get the main camera
-        camera = Camera.main;
+        _camera = Camera.main;
 
         // Get the player
         //subject = GameObject.FindGameObjectWithTag("Player").transform;

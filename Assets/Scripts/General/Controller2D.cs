@@ -3,130 +3,41 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
-public struct RaycastOrigins
+public class Controller2D : RaycastController2D
 {
-    public Vector2 top_left, top_right;
-    public Vector2 bottom_left, bottom_right;
-}
+    public float max_slope_angle = 80f;             // Max angle the object can handle
+    public CollisionInfo collisions;                // Struct containing the info about the objects collisions
 
-public struct CollisionInfo
-{
-    public bool above, below;
-    public bool left, right;
-
-    public bool climbing_slope;
-    public float slope_angle, slope_angle_old;
-    public void Reset()
+    public override void Start()
     {
-        above = below = false;
-        left = right = false;
-        climbing_slope = false;
-        slope_angle_old = slope_angle;
-        slope_angle = 0;
-    }
-}
-
-[RequireComponent(typeof(BoxCollider2D))]
-public class Controller2D : MonoBehaviour
-{
-    public float move_speed = 10f;                  // Objects horizontal move velocity
-    public float acceleration_time_airborne = .1f;  // Horizontal acceleration time if object is airborne
-    public float acceleration_time_grounded = .05f; // Horizontal acceleration time if object is grounded
-    public float jump_height = 4f;                  // Height in game units the object can jump
-    public float fall_gravity_scale = 1.5f;         // Gravity scale when object is falling
-    public float normal_gravity_scale = 1f;         // Gravity scale when object is not falling
-    public LayerMask collision_mask;                // Layer mask of what to collide with
-    const float skin_width = .015f;                 // Distance the raycast origins are offset by inside the box collider 2D
-    public int horizontal_ray_count = 4;            // Amount of rays to send out on the x-axis
-    public int vertical_ray_count = 4;              // Amount of rays to send out on the y-axis
-    public float max_climb_angle = 80f;
-
-    private float direction;                        
-    private bool jump;
-    private float gravity;
-    private Vector3 velocity;
-    private float temp;
-
-    private float horizontal_ray_spacing;   // Used for the spacing between each horizontal ray
-    private float vertical_ray_spacing;     // Used for the spacing between each vertical ray
-
-    private BoxCollider2D _collider;        // Reference to box collider 2D of object
-    private RaycastOrigins raycast_origins; // Struct containing the raycast origins
-    public CollisionInfo collisions;        // Struct containing the info about the objects collisions
-
-    private void Start()
-    {
-        // Get the current gravity
-        gravity = GameController.instance.gravity;
-
-        // Get the box collider 2D of the object
-        _collider = GetComponent<BoxCollider2D>();
-
-        // Calculate the ray spacing for collider
-        CalculateRaySpacing();
+        base.Start();
+        collisions.face_direction = 1;
     }
 
-    private void Update()
+    public void Move( Vector2 velocity, bool standing_on_platform = false)
     {
-        // Reset vertical velocty if there is a vertical collision
-        if (collisions.above || collisions.below)
-        {
-            velocity.y = 0;
-        }
-
-        // Add the jump velocity object was told to jump
-        if (jump)
-        {
-            velocity.y = CalcJumpForce();
-        }
-
-        // Add gravity to the object velocity
-        if (!collisions.below && velocity.y < 0)
-        {
-            // Add the modified gravity since object is falling
-            velocity.y += gravity * fall_gravity_scale * Time.deltaTime;
-        }
-        else
-        {
-            // Add gravity to the objects y velocity
-            velocity.y += gravity * normal_gravity_scale * Time.deltaTime;
-        }
-
-        // Add the input to the objects x velocity
-        float target_velocity_x = direction * move_speed;
-
-        // Smooth the x velocity depending on if airborne or not
-        velocity.x = Mathf.SmoothDamp(velocity.x, target_velocity_x, ref temp, (collisions.below) ? acceleration_time_grounded : acceleration_time_airborne);
-        
-        // Move the objects
-        Move(velocity * Time.deltaTime);
-    }
-
-    private float CalcJumpForce()
-    {
-        // The jump force = |gravity| * sqrt( (2 * jump height) / |gravity| )
-        return (Mathf.Abs(gravity) * Mathf.Sqrt((2f * jump_height) / Mathf.Abs(gravity)));
-    }
-
-    public void UpdateInputs(float direction, bool jump)
-    {
-        this.direction = direction;
-        this.jump = jump;
-    }
-
-    private void Move(Vector3 velocity)
-    {
-        // Reset the objects collision list
-        collisions.Reset();
-
         // Update the raycast origins for the box collider
         UpdateRaycastOrigins();
 
-        // Check for horizontal and vertical collisions
-        if(velocity.x != 0)
+        // Reset the objects collision list
+        collisions.Reset();
+
+        // Store the old velocity
+        collisions.velocity_old = velocity;
+
+        if (velocity.y < 0)
         {
-            HorizontalCollisions(ref velocity);
+            DescendSlope(ref velocity);
         }
+
+        if (velocity.x != 0)
+        {
+            collisions.face_direction = (int)Mathf.Sign(velocity.x);
+        }
+
+        // Check for horizontal and vertical collisions
+        HorizontalCollisions(ref velocity);
+
         if(velocity.y != 0)
         {
             VerticalCollisions(ref velocity);
@@ -134,9 +45,14 @@ public class Controller2D : MonoBehaviour
 
         // Move the object
         transform.Translate(velocity);
+
+        if(standing_on_platform)
+        {
+            collisions.below = true;
+        }
     }
 
-    private void VerticalCollisions(ref Vector3 velocity)
+    private void VerticalCollisions(ref  Vector2 velocity)
     {
         // Get the sign of the y velocity. A normalized direction vector
         float direction_y = Mathf.Sign(velocity.y);
@@ -156,7 +72,7 @@ public class Controller2D : MonoBehaviour
             RaycastHit2D hit = Physics2D.Raycast(ray_origin, Vector2.up * direction_y, ray_length, collision_mask);
             
             // Draw rays for debug
-            Debug.DrawRay(ray_origin, Vector2.up * direction_y * ray_length, Color.red);
+            Debug.DrawRay(ray_origin, Vector2.up * direction_y, Color.red);
 
             // Check if we would hit something
             if (hit)
@@ -178,15 +94,48 @@ public class Controller2D : MonoBehaviour
                 collisions.below = (direction_y == -1);
             }
         }
+
+        if (collisions.climbing_slope)
+        {
+            // Check for a slope where we are going to be
+            float direction_x = Mathf.Sign(velocity.x);
+            ray_length = Mathf.Abs(velocity.x) + skin_width;
+            Vector2 ray_origin = ((direction_x == -1) ? raycast_origins.bottom_left : raycast_origins.bottom_right) + Vector2.up * velocity.y;
+
+            // Raycast where we will be
+            RaycastHit2D hit = Physics2D.Raycast(ray_origin, Vector2.right * direction_x, ray_length, collision_mask);
+
+            // Draw rays for debug
+            Debug.DrawRay(ray_origin, Vector2.right * direction_x, Color.red);
+
+            if (hit)
+            {
+                // Check if what we hit is actually a new slope
+                float new_slope_angle = Vector2.Angle(hit.normal, Vector2.up);
+                if(new_slope_angle != collisions.slope_angle)
+                {
+                    // If its a new slope, modify our x velocity to not go though it
+                    velocity.x = (hit.distance - skin_width) * direction_x;
+                    collisions.slope_angle = new_slope_angle;
+                    collisions.slope_normal = hit.normal;
+                }
+            }
+        }
     }
 
-    private void HorizontalCollisions(ref Vector3 velocity)
+    private void HorizontalCollisions(ref  Vector2 velocity)
     {
         // Get the sign of the y velocity. A normalized direction vector
-        float direction_x = Mathf.Sign(velocity.x);
+        float direction_x = collisions.face_direction;
 
         // Calculate ray length based on velocity. Includes skin width
         float ray_length = Mathf.Abs(velocity.x) + skin_width;
+
+        // Even if we are a little off the wall. We still want to check collisions
+        if(Mathf.Abs(velocity.x) < skin_width)
+        {
+            ray_length = 2 * skin_width;
+        }
 
         for (int i = 0; i < horizontal_ray_count; i++)
         {
@@ -194,35 +143,50 @@ public class Controller2D : MonoBehaviour
             Vector2 ray_origin = (direction_x == 1) ? raycast_origins.bottom_right : raycast_origins.bottom_left;
 
             // Add the ray spacing to the origin based on which ray we are currently on. Also add the y velocity because we are checking where we will end up
-            ray_origin += Vector2.up * (horizontal_ray_spacing * i + velocity.y);
+            ray_origin += Vector2.up * (horizontal_ray_spacing * i);
 
             // Perform raycast
             RaycastHit2D hit = Physics2D.Raycast(ray_origin, Vector2.right * direction_x, ray_length, collision_mask);
             
             // Draw rays for debug
-            Debug.DrawRay(ray_origin, Vector2.right * direction_x * ray_length, Color.red);
+            Debug.DrawRay(ray_origin, Vector2.right * direction_x, Color.red);
 
             // Check if we would hit something
             if (hit)
             {
+                // Check if we are inside something
+                if(hit.distance == 0)
+                {
+                    continue;
+                }
+
                 // Get the angle of the surface the object collided with
                 float slope_angle = Vector2.Angle(hit.normal, Vector2.up);
                 
-                if(i == 0 && slope_angle <= max_climb_angle)
+                if(i == 0 && slope_angle <= max_slope_angle)
                 {
+                    // Check if we are already descending a slope
+                    if (collisions.descending_slope)
+                    {
+                        collisions.descending_slope = false;
+                        velocity = collisions.velocity_old;
+                    }
+
                     float distance_to_slope_start = 0;
+
                     // If we are starting to climb a new slope
-                    if(slope_angle != collisions.slope_angle_old)
+                    if (slope_angle != collisions.slope_angle_old)
                     {
                         distance_to_slope_start = hit.distance - skin_width;
                         velocity.x -= distance_to_slope_start * direction_x;
                     }
-                    ClimbSlope(ref velocity, slope_angle);
+
+                    ClimbSlope(ref velocity, slope_angle, hit.normal);
                     velocity.x += distance_to_slope_start * direction_x;
                 }
 
                 // Only 
-                if(!collisions.climbing_slope || collisions.slope_angle > max_climb_angle)
+                if(!collisions.climbing_slope || collisions.slope_angle > max_slope_angle)
                 {
                     // If we collide with something while climbing a slope
                     if (collisions.climbing_slope)
@@ -245,56 +209,97 @@ public class Controller2D : MonoBehaviour
         }
     }
 
-    private void ClimbSlope(ref Vector3 velocity, float angle)
+    private void ClimbSlope(ref Vector2 velocity, float slope_angle, Vector2 slope_normal)
     {
         // Calculate the y velocity for climbing using the slope angle
         float move_distance = Mathf.Abs(velocity.x);
-        float climb_velocity_y = velocity.y = move_distance * Mathf.Sin(angle * Mathf.Deg2Rad);
 
-        // Check fi the y velocity is already greater than the climb velocity
+        //float climb_velocity_y = velocity.y = move_distance * Mathf.Sin(angle * Mathf.Deg2Rad);
+        float climb_velocity_y = move_distance * Mathf.Sin(slope_angle * Mathf.Deg2Rad);
+
+        // Check if the y velocity is already greater than the climb velocity
         if (velocity.y <= climb_velocity_y){
             velocity.y = climb_velocity_y;
             
             // Calculate the x velocity for climbing using the slope angle. Add in the direction since it is removed for the calculations
-            velocity.x = move_distance * Mathf.Cos(angle * Mathf.Deg2Rad) * Mathf.Sign(velocity.x);
+            velocity.x = move_distance * Mathf.Cos(slope_angle * Mathf.Deg2Rad) * Mathf.Sign(velocity.x);
             
             // Update the collisions info
             collisions.below = true;
             collisions.climbing_slope = true;
-            collisions.slope_angle = angle;
+            collisions.slope_angle = slope_angle;
+            collisions.slope_normal = slope_normal;
         }
     }
 
-    private void UpdateRaycastOrigins()
+    private void DescendSlope(ref Vector2 velocity)
     {
-        // Create bounds based on the box collider 2d of the object
-        Bounds bounds = _collider.bounds;
+        // Cast a ray to check for max slope while descending
+        RaycastHit2D max_slope_hit_left = Physics2D.Raycast(raycast_origins.bottom_left, Vector2.down, Mathf.Abs(velocity.y) + skin_width, collision_mask);
+        RaycastHit2D max_slope_hit_right = Physics2D.Raycast(raycast_origins.bottom_right, Vector2.down, Mathf.Abs(velocity.y) + skin_width, collision_mask);
+        if(max_slope_hit_left ^ max_slope_hit_right)
+        {
+            SlideDownMaxSlope(max_slope_hit_left, ref velocity);
+            SlideDownMaxSlope(max_slope_hit_right, ref velocity);
+        }
 
-        // Shrink the bounds to be skin width inside the collider
-        bounds.Expand(skin_width * -2f);
+        if (!collisions.sliding_down_max_slope)
+        {
+            // Get the direction and get the opposite corner from the direction we are descending the slope
+            float direction_x = Mathf.Sign(velocity.x);
+            Vector2 ray_origin = (direction_x == -1) ? raycast_origins.bottom_right : raycast_origins.bottom_left;
 
-        // Update the raycast origin points
-        raycast_origins.top_left = new Vector2(bounds.min.x, bounds.max.y);
-        raycast_origins.top_right = new Vector2(bounds.max.x, bounds.max.y);
-        raycast_origins.bottom_left = new Vector2(bounds.min.x, bounds.min.y);
-        raycast_origins.bottom_right = new Vector2(bounds.max.x, bounds.min.y);
+            // Cast a raycast directly below until it hits something
+            RaycastHit2D hit = Physics2D.Raycast(ray_origin, -Vector2.up, Mathf.Infinity, collision_mask);
+
+            // Draw rays for debug
+            Debug.DrawRay(ray_origin, -Vector2.up * 2, Color.green);
+
+            if (hit)
+            {
+                // Get the slope angle of the surface we hit
+                float slope_angle = Vector2.Angle(hit.normal, Vector2.up);
+
+                // Make sure its not a flat plane
+                if (slope_angle != 0 && slope_angle <= max_slope_angle)
+                {
+                    // Make sure we are moving in the same direction of the slope
+                    if (Mathf.Sign(hit.normal.x) == direction_x)
+                    {
+                        // Make sure we are actually close enough to be affected by the slope
+                        if (hit.distance - skin_width <= Mathf.Tan(slope_angle * Mathf.Deg2Rad) * Mathf.Abs(velocity.x))
+                        {
+                            float move_distance = Mathf.Abs(velocity.x);
+                            float descend_velocity_y = move_distance * Mathf.Sin(slope_angle * Mathf.Deg2Rad);
+                            velocity.x = move_distance * Mathf.Cos(slope_angle * Mathf.Deg2Rad) * Mathf.Sign(velocity.x);
+                            velocity.y -= descend_velocity_y;
+
+                            // Update our collisions
+                            collisions.slope_angle = slope_angle;
+                            collisions.descending_slope = true;
+                            collisions.below = true;
+                            collisions.slope_normal = hit.normal;
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    private void CalculateRaySpacing()
+    private void SlideDownMaxSlope(RaycastHit2D hit, ref Vector2 velocity)
     {
-        // Create bounds based on the box collider 2d of the object
-        Bounds bounds = _collider.bounds;
+        if(hit)
+        {
+            float slope_angle = Vector2.Angle(hit.normal, Vector2.up);
+            if(slope_angle > max_slope_angle)
+            {
+                velocity.x = hit.normal.x * (Mathf.Abs(velocity.y) - hit.distance) / Mathf.Tan(slope_angle * Mathf.Deg2Rad);
 
-        // Shrink the bounds to be skin width inside the collider
-        bounds.Expand(skin_width * -2f);
-
-        // Ray counts must always be greater than 2
-        horizontal_ray_count = Mathf.Clamp(horizontal_ray_count, 2, int.MaxValue);
-        vertical_ray_count = Mathf.Clamp(vertical_ray_count, 2, int.MaxValue);
-
-        // Calculate the spacings
-        horizontal_ray_spacing = bounds.size.y / (horizontal_ray_count - 1);
-        vertical_ray_spacing = bounds.size.x / (vertical_ray_count - 1);
+                collisions.slope_angle = slope_angle;
+                collisions.sliding_down_max_slope = true;
+                collisions.slope_normal = hit.normal;
+            }
+        }
     }
 }
 
